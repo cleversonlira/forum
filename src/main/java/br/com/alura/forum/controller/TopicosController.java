@@ -6,11 +6,13 @@ import java.util.Optional;
 import javax.transaction.Transactional;
 import javax.validation.Valid;
 
-import org.springframework.data.domain.Sort.Direction;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,8 +45,8 @@ public class TopicosController {
 
 	// @ResponseBody
 	@GetMapping
-	public Page<TopicoDTO> lista(String nomeCurso, @RequestParam int pagina, @RequestParam int qtdPaginas, @RequestParam String ordenacao) {
-		Pageable paginacao = PageRequest.of(pagina, qtdPaginas, Direction.ASC, ordenacao);
+	@Cacheable(value = "listaDeTopicos")
+	public Page<TopicoDTO> lista(@RequestParam(required = false) String nomeCurso, @PageableDefault(sort="id", direction = Direction.DESC) Pageable paginacao) {
 		if (nomeCurso != null) {
 			return TopicoDTO.converter(this.topicoRepository.findByCursoNome(nomeCurso, paginacao));
 		} else {
@@ -65,10 +67,11 @@ public class TopicosController {
 
 	// Este Metodo retornará 201(created caso criado com sucesso, portanto é
 	// necessário retornar o Topico criado)
-	// Para iso, utilizaremos o ResponseEntity, do Spring, do tipo Topico. Será
+	// Para isto, utilizaremos o ResponseEntity, do Spring, do tipo Topico. Será
 	// necessário também informar a URI.
 	@PostMapping
 	@Transactional
+	@CacheEvict(value = "listaDeTopicos", allEntries = true)
 	public ResponseEntity<TopicoDTO> cadastrar(@RequestBody @Valid TopicoForm topicoForm,
 			UriComponentsBuilder uriBuilder) {
 		Topico topico = topicoForm.converter(cursoRepository);
@@ -79,6 +82,7 @@ public class TopicosController {
 
 	@PutMapping("/{id}")
 	@Transactional
+	@CacheEvict(value = "listaDeTopicos", allEntries = true)
 	public ResponseEntity<TopicoDTO> atualizar(@PathVariable Long id, @Valid @RequestBody AtualizacaoTopicoForm form) {
 			Optional<Topico> topicoOptional = this.topicoRepository.findById(id);
 			
@@ -91,6 +95,7 @@ public class TopicosController {
 
 	@DeleteMapping("/{id}")
 	@Transactional
+	@CacheEvict(value = "listaDeTopicos", allEntries = true)
 	public ResponseEntity<?> deletar(@PathVariable Long id) {
 		Optional<Topico> topicoOptional = this.topicoRepository.findById(id);
 		
